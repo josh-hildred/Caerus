@@ -1,0 +1,117 @@
+// Author: Kun Ren <renkun.nwpu@gmail.com>
+//
+
+syntax = "proto2";
+
+message KeyEntry {
+  required bytes key = 1;
+  required uint32 master = 2;
+  required uint64 counter = 3;
+}
+
+message KeyEntries {
+  repeated KeyEntry entries = 1;
+}
+
+message RemoteResultsEntry {
+  required bytes key = 1;
+  required bytes value = 2;
+  required uint32 master = 3;
+  required uint64 counter = 4;
+}
+
+message RemoteResultsEntries {
+  repeated RemoteResultsEntry entries = 1;
+}
+
+message TxnPart {
+  required uint64 txn_id = 1;
+  required uint32 region = 2;
+  repeated KeyEntry write_set = 3;
+  repeated KeyEntry read_set = 4;
+}
+
+message TxnProto {
+  // Globally unique transaction id, specifying global order.
+  required uint64 txn_id = 1;
+
+  // Specifies which stored procedure to invoke at execution time.
+  optional uint32 txn_type = 10;
+
+  // True if transaction is known to span multiple database nodes.
+  //optional bool multipartition = 12;
+
+  // Keys of objects read (but not modified) by this transaction.
+  repeated KeyEntry read_set = 20;
+
+  // Keys of objects modified (but not read) by this transaction.
+  repeated KeyEntry write_set = 21;
+
+  // Keys of objects read AND modified by this transaction.
+  repeated KeyEntry read_write_set = 22;
+
+  // Arguments to be passed when invoking the stored procedure to execute this
+  // transaction. 'arg' is a serialized protocol message. The client and backend
+  // application code is assumed to know how to interpret this protocol message
+  // based on 'txn_type'.
+  optional bytes arg = 23;
+
+  // Transaction status.
+  enum Status {
+    NEW = 0;
+    ACTIVE = 1;
+    COMMITTED = 2;
+    ABORTED = 3;
+    ABORTED_WITHOUT_LOCK = 4;
+  };
+
+  optional Status status = 30 [default = NEW];
+
+  // Node ids of nodes that participate as readers and writers in this txn.
+  repeated uint64 readers = 40;
+  repeated uint64 writers = 41;
+
+//-------  Below is for low latency CalvinDB
+  optional uint32 origin_replica = 50 [default = 0];
+  // whether the action is the new_generated cross-replica action
+  optional bool new_generated = 51 [default = false];
+  repeated uint32 involved_replicas = 52;
+  optional bool fake_txn = 53 [default = false];
+
+//------- Below is for remaster transactions
+  optional bool remaster_txn = 54 [default = false];
+  optional uint32 client_replica = 55;
+  optional uint32 remaster_from = 56 [default = 99999];
+  optional uint32 remaster_to = 57 [default = 99999];
+  optional bool wait_for_remaster_pros = 58 [default = false];
+
+
+  // Also should take some information about which records will be remaster
+  // This is to measure latency
+  optional uint64 generated_machine = 64 [default = 1000];
+
+  //-------- Below is for transaction parts
+  optional uint32 num_parts = 59;
+  optional uint32 replica = 60;
+  repeated KeyEntry txn_part_write_set = 61;
+  repeated KeyEntry txn_part_read_set = 67;
+  optional uint32 partial_sequencer_id = 62;
+  optional uint64 internal_id = 63;
+
+  //-------- For transaction performance tracking
+  optional double start_time = 65;
+  repeated double times = 66;
+}
+
+message LookupMasterEntry {
+  required uint64 txn_id = 1;
+  repeated bytes keys = 2;
+}
+
+message LookupMasterResultEntry {
+  required uint64 txn_id = 1;
+  repeated KeyEntry key_entries = 2;
+}
+
+
+

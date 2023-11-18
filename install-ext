@@ -1,0 +1,71 @@
+#!/bin/bash
+
+# requires: make, g++, autoconf, libtool, libreadline-dev, svn(subversion),git,unzip,tar,cmake, libsnappy-dev
+
+sudo add-apt-repository universe
+sudo apt-get --yes update
+
+sudo apt-get --yes install unzip g++ cmake libboost-all-dev libevent-dev libdouble-conversion-dev libgoogle-glog-dev libgflags-dev libiberty-dev libreadline-dev
+sudo apt-get --yes install liblz4-dev liblzma-dev libsnappy-dev make zlib1g-dev binutils-dev libjemalloc-dev libssl-dev pkg-config libunwind-dev libtool
+
+mkdir ext
+cd ext
+
+# protobuf
+wget https://github.com/google/protobuf/releases/download/v3.2.0/protobuf-cpp-3.2.0.tar.gz
+tar -xzf protobuf-cpp-3.2.0.tar.gz
+mv protobuf-3.2.0/ protobuf
+rm -fr protobuf-cpp-3.2.0.tar.gz
+cd protobuf
+./autogen.sh
+./configure --prefix=$PWD
+make -j
+make install
+cd ..
+
+
+# glog
+wget https://github.com/google/glog/archive/v0.3.4.tar.gz
+tar -xzf v0.3.4.tar.gz
+mv glog-0.3.4/ glog
+rm -fr v0.3.4.tar.gz
+cd glog
+./configure --prefix=$PWD
+make -j
+make install
+cd ..
+
+
+# zeromq
+git clone https://github.com/zeromq/libzmq.git
+mv libzmq zeromq
+cd zeromq
+./autogen.sh
+./configure --prefix=$PWD
+make -j
+make install
+cd ..
+
+
+#gflags
+wget https://github.com/gflags/gflags/archive/v2.0.tar.gz
+tar -xzf v2.0.tar.gz
+rm v2.0.tar.gz
+mv gflags-2.0/ gflags
+cd gflags
+./configure --prefix=$PWD
+make -j
+make install
+cd ..
+
+#gtest
+git clone https://github.com/google/googletest.git -b v1.13.0
+cd googletest        # Main directory of the cloned repository.
+mkdir build          # Create a directory to hold the build output.
+cd build
+cmake ..             # Generate native build scripts for GoogleTes
+
+make
+sudo make install
+
+

@@ -1,0 +1,101 @@
+This Repository Contains the implementation of Caerus. It builds on the Calvin opensource code at https://github.com/kunrenyale/CalvinDB
+
+Currently, we do not support the Calvin and SLOG sequencers; however, we hope to change this.
+
+REQUIREMENTS:
+Caerus has been tested on Ubuntu 20.04. By default, Caerus binds threads to cpus 0-23.
+Furthermore, sufficient system memory is required as Caerus is an in-memory database; we recommend at least 64GB.
+
+Caerus requires packages:
+unzip g++ cmake libboost-all-dev libevent-dev libdouble-conversion-dev libgoogle-glog-dev libgflags-dev libiberty-dev
+libreadline-dev liblz4-dev liblzma-dev libsnappy-dev make zlib1g-dev binutils-dev libjemalloc-dev libssl-dev pkg-config
+libunwind-dev libtool protobuf gflags zeromq glog
+
+install-ext will install all of these for you
+
+INSTALL INSTRUCTIONS:
+
+#install required libraries
+./install_ext
+
+#setup environment so code will compile
+source setup
+
+#complile code
+cd src
+make -j
+cd ../
+
+# to run a simple a single node locally
+# NOTE: I do not suggest this unless you have a powerful machine
+
+WORKLOADS:
+Caerus supports two workloads, TPC-C and MovR. We would like to support more in the future.
+--experiment controls which workload will be run
+
+Caerus has a built-in load generator; the option --batch_size will dictate the load on the system. Each machine will
+submit 200 * batch_size transactions per second to the system
+
+--locality_size will group regions into locality groups; this defaults to no locality groups
+
+
+TPC-C:
+
+--percent_mp controls the percent of multi-warehouse transactions
+
+--percent_mr controls the percent of multi-warehouse transactions that are multi-region
+
+--hot_records controls the number of warehouses
+
+Example:
+./bin/scripts/caerus_server --machine_id=0 --experiment="TPC-C" --config=local.conf --max_batch_size=10 --percent_mr=10 --percent_mp=0 --hot_records=240
+./bin/scripts/caerus_server --machine_id=1 --experiment="TPC-C" --config=local.conf --max_batch_size=10 --percent_mr=10 --percent_mp=0 --hot_records=240
+
+Will run TPC-C on Caerus with two replicas and a single partition on the local machine
+
+MovR:
+
+--percent_mp controls the percent of multi-partition transactions
+
+--percent_mr controls the percent of multi-region transactions.
+When locality_size is set 1/3 of multi-region transactions will be outside the locality group, while 2/3 will be within the
+locality group
+
+--hot_records controls the number of vehicles
+
+Example:
+./bin/scripts/caerus_server --machine_id=0 --experiment="MovR" --config=local.conf --max_batch_size=10 --percent_mr=10 --percent_mp=0 --hot_records=240
+./bin/scripts/caerus_server --machine_id=1 --experiment="MovR" --config=local.conf --max_batch_size=10 --percent_mr=10 --percent_mp=0 --hot_records=240
+
+Will run MovR on Caerus with two replicas and a single partition on the local machine
+
+
+DEPLOY TO A CLUSTER
+cluster is a script that will deploy Caerus across a cluster of machines specified in the config file cluster.conf
+
+cluster.conf contains the machine information for the cluster. Each line contains the information for a single machine
+with the format <machine_id>:<replica>:<address>:<port>.
+
+
+#creates the directory specified in --path and pushes the contents of src to all machines
+./bin/scripts/cluster --command="push-code" --path="~/caerus" --username=<username>  --config="cluster.conf"
+
+#copies the config file to all machines
+./bin/scripts/cluster --command="put-config" --path="~/caerus" --username=<username> --config="cluster.conf"
+
+#installs all required libraries at each machine
+./bin/scripts/cluster --command="install-ext" --path="~/caerus" --username=<username> --config="cluster.conf"
+
+#compile the code on each machine
+./bin/scripts/cluster --command="make" --path="~/caerus" --username=<username> --config="cluster.conf"
+
+#runs Caerus across the cluster as specified by the workload parameters --experiment, --hot_records, --max_batch_size, --percent_mr, --percent_mp, --locality_size
+./bin/scripts/cluster --command="start" --path="~/caerus" --type=1 --username=<username> --config="cluster.conf" --experiment="TPC-C" --hot_records=10000 --max_batch_size=10 --percent_mr=10 --percent_mp=0
+
+#kills all running Caerus instances
+./bin/scripts/cluster --command="kill" --username=<username> --config="cluster.conf"
+
+
+
+
+

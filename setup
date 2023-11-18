@@ -1,0 +1,9 @@
+#!/bin/bash
+
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PWD/ext/zeromq/lib
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PWD/ext/protobuf/lib
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PWD/ext/gflags/.libs
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PWD/ext/glog/.libs
+
+
+
