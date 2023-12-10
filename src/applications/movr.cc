@@ -10,22 +10,6 @@
 
 #include <bitset>
 
-// Fills '*keys' with num_keys unique ints k where
-// 'key_start' <= k < 'key_limit', and k == part (mod nparts).
-// Requires: key_start % nparts == 0
-void Movr::GetRandomKeys(set<uint64>* keys, uint32 num_keys, uint64 key_start,
-                                   uint64 key_limit, uint64 part) {
-    CHECK(key_start % nparts == 0);
-    keys->clear();
-    for (uint32 i = 0; i < num_keys; i++) {
-        // Find a key not already in '*keys'.
-        uint64 key;
-        do {
-            key = key_start + part + nparts * (rand() % ((key_limit - key_start)/nparts));
-        } while (keys->count(key));
-        keys->insert(key);
-    }
-}
 
 // Fills '*keys' with num_keys unique ints k where
 // 'key_start' <= k < 'key_limit', and k == part (mod nparts), keys's master == replica
