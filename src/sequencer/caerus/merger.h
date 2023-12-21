@@ -6,8 +6,6 @@
 #ifndef _DB_MERGER_H_
 #define _DB_MERGER_H_
 
-//#define MAX_INTERNAL_ID 100000
-
 #define NUM_WORKERS NUM_SEQUENCER_WORKERS
 
 #include <atomic>
@@ -33,13 +31,6 @@
 #include "common/internal_ids.h"
 
 
-using std::vector;
-using std::atomic;
-using std::make_pair;
-using std::pair;
-using std::queue;
-using std::set;
-using std::tr1::unordered_map;
 
 class Merger {
 public:
@@ -93,8 +84,6 @@ private:
 
     std::unordered_map<uint64_t, MessageProto *> batch_messages_;
     std::unordered_map<uint64_t, MessageProto *> sequence_messages_;
-
-    vector<Log*> partial_logs_;
 
     bool running_;
 

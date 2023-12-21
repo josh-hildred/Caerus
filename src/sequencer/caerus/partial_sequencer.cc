@@ -6,8 +6,8 @@
 #include <list>
 #include <unordered_set>
 
-#define PRINT_STATS
-#define STAT_INTERVAL 1
+//#define PRINT_STATS
+//#define STAT_INTERVAL 1
 
 
 
@@ -117,7 +117,7 @@ uint64 local_machine = configuration_->local_node_id();
 
 
     connection_->DeleteChannel("synchronization_sequencer_channel");
-    LOG(ERROR) << "In sequencer:  After synchronization. Starting sequencer writer.";
+    //LOG(ERROR) << "In sequencer:  After synchronization. Starting sequencer writer.";
 
 
 
@@ -149,7 +149,6 @@ uint64 local_machine = configuration_->local_node_id();
         {
             warmup_bs = max_batch_size_;
         }
-        //todo change getGUID
         batch_number = configuration_->GetGUID();
         double epoch_start = GetTime();
         for (auto& batch_message : batch_messages) {
@@ -247,16 +246,13 @@ void PartialSequencer::RunReader(int id) {
 
     std::string incoming_channel("sequencer_" + std::to_string(id));
 
-    LOG(ERROR) << "Listening on " << incoming_channel;
-
 
     queue<MessageProto> partial_sequence;
 
     for (uint64 i = 0; i < configuration_->replicas_size();i++) {
-        batches[i].set_destination_channel("merging_log_partition_" + std::to_string(configuration_->local_replica_id()));
-        //todo fix this for multiple partitions
+        batches[i].set_destination_channel("inserter_partition_" + std::to_string(configuration_->local_replica_id()));
         uint64 machine_id = configuration_->LookupMachineID(0, i);
-        LOG(ERROR) << configuration_->local_node_id() << ": In sequencer writer:  setting up conn to :" << machine_id;
+        //LOG(ERROR) << configuration_->local_node_id() << ": In sequencer writer:  setting up conn to :" << machine_id;
         batches[i].set_destination_node(machine_id);
         batches[i].set_type(MessageProto::TXN_SUBBATCH);
     }
@@ -268,7 +264,7 @@ void PartialSequencer::RunReader(int id) {
     for (uint64 i = 1; i < configuration_->nodes_per_replica();i++) {
         paxos_data_messages[i].set_destination_channel(string("sequencer_" + std::to_string(0)));
         uint64 machine_id = configuration_->LookupMachineID(i, configuration_->local_replica_id());
-        LOG(ERROR) << configuration_->local_node_id() << ": In sequencer writer:  setting up paxos conn to :" << machine_id;
+        //LOG(ERROR) << configuration_->local_node_id() << ": In sequencer writer:  setting up paxos conn to :" << machine_id;
         paxos_data_messages[i].set_destination_node(machine_id);
         paxos_data_messages[i].set_type(MessageProto::PAXOS_DATA);
     }
@@ -276,7 +272,7 @@ void PartialSequencer::RunReader(int id) {
     for (uint64 i = 1; i < configuration_->nodes_per_replica();i++) {
         paxos_commit_messages[i].set_destination_channel(string("sequencer_" + std::to_string(0)));
         uint64 machine_id = configuration_->LookupMachineID(i, configuration_->local_replica_id());
-        LOG(ERROR) << configuration_->local_node_id() << ": In sequencer writer:  setting up conn to :" << machine_id;
+        //LOG(ERROR) << configuration_->local_node_id() << ": In sequencer writer:  setting up conn to :" << machine_id;
         paxos_commit_messages[i].set_destination_node(machine_id);
         paxos_commit_messages[i].set_type(MessageProto::PAXOS_COMMIT);
     }
@@ -492,6 +488,7 @@ void PartialSequencer::RunReader(int id) {
                 connection_->Send(paxos_leader_message);
             } else if(message.type() == MessageProto::PAXOS_COMMIT)
             {
+                //should handle commit
             }
         }
     }

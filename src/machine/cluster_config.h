@@ -25,7 +25,6 @@
 #define EPOCH_DURATION .005
 #define BIND_CPU
 #define RUNTIME 120
-//#define COMMIT_MSG
 
 using std::map;
 using std::string;
@@ -128,11 +127,6 @@ class ClusterConfig {
     return 1 + local_node_id_ + (all_nodes_size() * (next_guid_++));
   }
 
-  uint64 GetGUIDBetter(uint64_t size) {
-        Lock l(&mutex_);
-        uint64_t ret = ((1 + local_node_id_) << 56) | next_guid_;
-        next_guid_+= size;
-    }
 
   // Returns true and populates '*info' accordingly iff the config tracks a
   // machine with id 'id'.

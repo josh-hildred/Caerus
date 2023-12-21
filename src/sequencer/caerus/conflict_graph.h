@@ -9,7 +9,6 @@
 #define INDEX_SIZE 5000000
 
 
-#include <memory>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -35,14 +34,6 @@
 #include "common/fast_fixed_size_map.h"
 #include "common/hash.h"
 
-using std::unordered_set;
-using std::vector;
-using std::make_pair;
-using std::queue;
-using std::stack;
-using std::tuple;
-using std::make_tuple;
-using std::atomic_flag;
 
 class Vertex;
 class ConflictGraph;
@@ -101,11 +92,9 @@ public:
     {
         return new PartitionedInserter(this, partition);
     }
-    bool tryRun(const std::shared_ptr<Vertex>& vertex, uint64_t vertex_to_remove, bool reader_conflict, ConcurrentReservableVector<std::pair<uint64_t, TxnProto *>> **batch, MutexRW *batch_lock);
+    bool tryRun(const std::shared_ptr<Vertex>& vertex, uint64_t vertex_to_remove, ConcurrentReservableVector<std::pair<uint64_t, TxnProto *>> **batch, MutexRW *batch_lock);
     void contractSCC(std::shared_ptr<SCC> scc);
 
-    std::atomic_int_fast64_t total_txns_submitted_;
-    std::atomic_int_fast64_t total_txns_committed_;
 
     std::atomic_int_fast64_t num_vertex_structs_;
 
@@ -138,8 +127,8 @@ protected:
 
 
     int strong_connect_(const std::shared_ptr<Vertex> &vertex, uint64_t *index,
-                        stack<uint64_t> *s,
-                        tsl::robin_map<uint64_t, tuple<uint64_t, uint64_t, bool>> *index_tracker, int *num_scc);
+                        std::stack<uint64_t> *s,
+                        tsl::robin_map<uint64_t, std::tuple<uint64_t, uint64_t, bool>> *index_tracker, int *num_scc);
 };
 
 class Vertex{
@@ -186,8 +175,6 @@ private:
     tsl::robin_map<uint64_t, uint64_t> in_edges_;
     tsl::robin_map<uint64_t, uint64_t> out_edges_;
 
-    tsl::robin_map<uint64_t, uint64_t> reader_waits_;
-
 
     bool in_scc = false;
     uint64_t scc_id = -1;
@@ -197,7 +184,6 @@ private:
 
     std::bitset<64> replica_flag_bits;
 
-    //------ performance tracking ---------//
     double first_part_insert_time;
     double last_part_insert_time;
 };
@@ -209,11 +195,11 @@ class SCC {
     bool hasAllParts_();
     bool safeToRemove_();
 
-    unordered_set<uint64_t> subSCCs;
+    std::unordered_set<uint64_t> subSCCs;
 
     ConflictGraph * graph_;
     MutexRW mutex_;
-    unordered_set<uint64> * vertex_ids_;
+    std::unordered_set<uint64> * vertex_ids_;
     uint64_t id_;
 
     bool removed = false;
@@ -221,7 +207,7 @@ class SCC {
 public:
     friend class ConflictGraph;
     friend class Vertex;
-    SCC(uint64_t id, unordered_set<uint64_t> * vertex_ids, ConflictGraph * graph);
+    SCC(uint64_t id, std::unordered_set<uint64_t> * vertex_ids, ConflictGraph * graph);
     ~SCC();
     bool tryRemove(const std::shared_ptr<Vertex>& vertex, uint64_t edge_to_remove);
     vector<uint64_t> * deterministicVertexOrder();

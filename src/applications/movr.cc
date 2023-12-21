@@ -198,7 +198,6 @@ void Movr::InitializeStorage(Storage* storage, ClusterConfig* conf) const {
             storage->PutObject(IntToString(i), new Record(value, master));
         }
     }
-    LOG(ERROR) << "storage inited";
 }
 
 

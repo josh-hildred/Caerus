@@ -48,7 +48,7 @@ int main(int argc, char** argv) {
         }
     }
 
-    LOG(ERROR) <<FLAGS_machine_id<<":Preparing to start Calvin node ";
+    LOG(ERROR) <<FLAGS_machine_id<<":Preparing to start Caerus node ";
 
 
 
@@ -105,14 +105,11 @@ int main(int argc, char** argv) {
     LOG(ERROR) << FLAGS_machine_id << ":Created application ";
 
 
-    Merger *log = NULL;
-    //only run merger if we are the head machine for a replica
+    Merger *merger = NULL;
     if(config->local_node_id() % config->nodes_per_replica() == 0) {
         if (FLAGS_machine_id % config->nodes_per_replica() < 3) {
-            log = new Merger(config, multiplexer, &ids, &perf);
+            merger = new Merger(config, multiplexer, &ids, &perf);
         }
-        // Initialize sequencer component and start sequencer thread running.
-        LOG(ERROR) << FLAGS_machine_id << ":Created log ";
     }
 
     // Run scheduler in main thread.
@@ -124,9 +121,9 @@ int main(int argc, char** argv) {
 
     LOG(ERROR) << FLAGS_machine_id << ":Created scheduler ";
 
-    PartialSequencer * mergingSequencer;
+    PartialSequencer * partialSequencer;
 
-    mergingSequencer = new PartialSequencer(config, multiplexer, client, FLAGS_max_batch_size, &ids);
+    partialSequencer = new PartialSequencer(config, multiplexer, client, FLAGS_max_batch_size, &ids);
     LOG(ERROR) << FLAGS_machine_id << ":Created sequencer ";
 
     // Run scheduler in main thread.
@@ -137,9 +134,8 @@ int main(int argc, char** argv) {
 
     printf("Machine %d : Calvin server exit!\n", (int)FLAGS_machine_id);
     usleep(1000*1000*5);
-    delete log;
-    delete mergingSequencer;
+    delete merger;
+    delete partialSequencer;
     usleep(1000*1000*5);
-    perf.dumpToCSV(string(STATS_DIR) + "perf." + std::to_string(config->local_replica_id()) + ".csv");
     quick_exit (EXIT_SUCCESS);
 }

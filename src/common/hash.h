@@ -33,26 +33,6 @@ public:
 };
 
 
-struct hash_
-{
-    std::size_t operator()(uint64_t const& s) const noexcept
-    {
-        uint64_t v = s * 3935559000370003845 + 2691343689449507681;
-
-        v ^= v >> 21;
-        v ^= v << 37;
-        v ^= v >>  4;
-
-        v *= 4768777513237032717;
-
-        v ^= v << 20;
-        v ^= v >> 41;
-        v ^= v <<  5;
-
-        return v;
-    }
-};
-
 struct hash_2_
 {
     std::size_t operator()(uint64_t const& s) const noexcept {

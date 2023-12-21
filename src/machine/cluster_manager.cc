@@ -240,16 +240,10 @@ void ClusterManager::ClusterStatus() {
     uint64 machine_id = it->second.id();
     string host = it->second.host();
 
-    // Same stuff with DeployCluster
-    /*string ssh_command = "ssh " + ssh_key(it->first)  + " " + ssh_username_ + "@" + host
-                         + "  'cd " + calvin_path_ + "; bin/scripts/" + binary_
-                         + "  --calvin_version=true" + "  --machine_id="
-                         + IntToString(machine_id) + "'";*/
     string ssh_command = "ssh " + ssh_username_ + "@" + host
                        + "  'cd " + calvin_path_ + "; source setup; bin/scripts/" + binary_
                        + "  --calvin_version=true" + "  --machine_id="
                        + IntToString(machine_id) + "'";
-      std::cout << "running " << ssh_command << std::endl;
       int status = system(ssh_command.c_str());\
       std::cout << status << std::endl;
     if (status == -1 || WIFEXITED(status) == false ||

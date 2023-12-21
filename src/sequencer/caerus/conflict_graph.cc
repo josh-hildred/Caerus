@@ -93,14 +93,10 @@ bool Vertex::tryRemove(uint64_t to_remove) {
     if(to_remove != 0) {
         // if this txn is waiting in readers
             auto edge = out_edges_.find(to_remove);
-            if (edge == out_edges_.end()) {
-                LOG(ERROR) << "ERROR: edge " << txn_id_ << " -- > " << to_remove << " does not exist";
-            }
-
             CHECK(edge != out_edges_.end());
             removeOutEdge_(to_remove);
     }
-    if(out_edges_.empty() && hasAllParts_() && reader_waits_.empty())
+    if(out_edges_.empty() && hasAllParts_())
     {
         return true;
     }
@@ -127,8 +123,8 @@ uint64_t Vertex::getVersion() {
 }
 
 
-int ConflictGraph::strong_connect_(const std::shared_ptr<Vertex>& vertex, uint64_t * index, stack<uint64_t> * s, tsl::robin_map<uint64_t,
-                           tuple<uint64_t, uint64_t, bool>> * index_tracker,
+int ConflictGraph::strong_connect_(const std::shared_ptr<Vertex>& vertex, uint64_t * index, std::stack<uint64_t> * s, tsl::robin_map<uint64_t,
+                           std::tuple<uint64_t, uint64_t, bool>> * index_tracker,
                                    int* num_scc)
 {
     int search_size = 1;
@@ -136,7 +132,7 @@ int ConflictGraph::strong_connect_(const std::shared_ptr<Vertex>& vertex, uint64
     uint64_t v_index = *index;
     uint64_t v_lowlink = *index;
     bool v_onstack = true;
-    index_tracker->insert(make_pair(vertex_id, make_tuple(v_index, v_lowlink, v_onstack)));
+    index_tracker->insert(make_pair(vertex_id, std::make_tuple(v_index, v_lowlink, v_onstack)));
     s->push(vertex_id);
     *index = *index + 1;
 
@@ -185,18 +181,18 @@ int ConflictGraph::strong_connect_(const std::shared_ptr<Vertex>& vertex, uint64
         {
             search_size += strong_connect_(neighbour, index, s, index_tracker, num_scc);
             v_lowlink = std::min(std::get<1>(index_tracker->find(neighbour_id)->second), v_lowlink);
-            index_tracker->insert_or_assign(vertex_id, make_tuple(v_index, v_lowlink, v_onstack));
+            index_tracker->insert_or_assign(vertex_id, std::make_tuple(v_index, v_lowlink, v_onstack));
         }
         else if(std::get<2>(it2->second))
         {
             v_lowlink = std::min(std::get<0>(index_tracker->find(neighbour_id)->second), v_lowlink);
-            index_tracker->insert_or_assign(vertex_id, make_tuple(v_index, v_lowlink, v_onstack));
+            index_tracker->insert_or_assign(vertex_id, std::make_tuple(v_index, v_lowlink, v_onstack));
         }
     }
 
     if(v_lowlink == v_index)
     {
-        auto * scc_vertex_ids = new unordered_set<uint64_t>();
+        auto * scc_vertex_ids = new std::unordered_set<uint64_t>();
         uint64_t w;
         do {
             w = s->top();
@@ -204,7 +200,7 @@ int ConflictGraph::strong_connect_(const std::shared_ptr<Vertex>& vertex, uint64
 
             scc_vertex_ids->insert(w);
             auto it = index_tracker->find(w);
-            index_tracker->insert_or_assign(w, make_tuple(std::get<0>(it->second), std::get<1>(it->second), false));
+            index_tracker->insert_or_assign(w, std::make_tuple(std::get<0>(it->second), std::get<1>(it->second), false));
         } while (w != vertex_id);
 
         // do not push a scc if it is of size 1, or we already know about it.
@@ -291,9 +287,9 @@ int ConflictGraph::findSCCs() {
     }
 
 
-    stack<uint64_t> s;
+    std::stack<uint64_t> s;
     uint64_t index = 0;
-    tsl::robin_map<uint64_t, tuple<uint64_t, uint64_t, bool>> index_tracker;
+    tsl::robin_map<uint64_t, std::tuple<uint64_t, uint64_t, bool>> index_tracker;
     int num_scc = 0;
     for (unsigned long & it : *search_set) {
         if (index_tracker.find(it) != index_tracker.end()) {
@@ -323,7 +319,7 @@ int ConflictGraph::findSCCs() {
         strong_connect_(vertex, &index, &s, &index_tracker, &num_scc);
 
     }
-
+    delete search_set;
     return num_scc;
 }
 
@@ -331,8 +327,6 @@ ConflictGraph::ConflictGraph(SAQ<TaskProto *> *task_queue, uint32_t num_vertex) 
     this->task_queue_ = task_queue;
     this->vertex_search_set_ = new std::list<uint64_t>();
     this->size_ = 0;
-    this->total_txns_submitted_ = 0;
-    this->total_txns_committed_ = 0;
     this->num_vertex_structs_ = 0;
     this->num_vertex_ = num_vertex;
     for (int i = MAX_INTERNAL_ID; i <= MAX_INTERNAL_ID * (num_vertex + 1); i++) {
@@ -345,7 +339,7 @@ uint64_t ConflictGraph::size() {
     return size_;
 }
 
-bool ConflictGraph::tryRun(const std::shared_ptr<Vertex>& vertex, uint64_t vertex_to_remove, bool reader_conflict, /*vector*/ ConcurrentReservableVector<std::pair<uint64_t, TxnProto *>> **batch,
+bool ConflictGraph::tryRun(const std::shared_ptr<Vertex>& vertex, uint64_t vertex_to_remove, ConcurrentReservableVector<std::pair<uint64_t, TxnProto *>> **batch,
                            MutexRW *batch_lock) {
     //check and make sure we don't have a trivial loop
     if(vertex == nullptr)
@@ -355,7 +349,6 @@ bool ConflictGraph::tryRun(const std::shared_ptr<Vertex>& vertex, uint64_t verte
     WriteLock lVertex(&vertex->mutex_);
     if(vertex->in_batch_)
     {
-        //LOG(ERROR) << "ERROR: transaction " << vertex->txn_id_ << " is already in batch";
         return false;
     }
     if(vertex->inSCC_())
@@ -442,16 +435,14 @@ bool ConflictGraph::tryRun(const std::shared_ptr<Vertex>& vertex, uint64_t verte
             }
             delete det_ordering;
 
-            LOG(ERROR) << "SCC sent of size: " << scc->vertex_ids_->size();
-
             scc->removed = true;
             return true;
         }
         lVertex.lock();
-        if(vertex->scc_id != scc->id_)
+        /*if(vertex->scc_id != scc->id_)
         {
             LOG(ERROR) << "INFO: Vertex " << vertex->txn_id_ << " now has different scc id " << vertex->scc_id << " than " << scc->id_;
-        }
+        }*/
         lVertex.unlock();
         return false;
     }
@@ -530,7 +521,7 @@ void ConflictGraph::contractSCC(std::shared_ptr<SCC> scc){
 
 }
 
-SCC::SCC(uint64_t id, unordered_set<uint64_t> *vertex_ids, ConflictGraph * graph) {
+SCC::SCC(uint64_t id, std::unordered_set<uint64_t> *vertex_ids, ConflictGraph * graph) {
     graph_ = graph;
     id_ = id;
     vertex_ids_ = vertex_ids;
@@ -575,7 +566,7 @@ bool SCC::hasAllParts_() {
 
 
 bool SCC::contractVertices(std::shared_ptr<SCC> this_) {
-    unordered_set<uint64_t> subSCC;
+    std::unordered_set<uint64_t> subSCC;
     unordered_map<uint64_t, std::shared_ptr<SCC>> subSCCptr;
 
     for(auto vertex_id : *vertex_ids_)
@@ -979,13 +970,6 @@ int ConflictGraph::PartitionedInserter::insert(TxnProto *txn) {
         Lock l(&graph_->vertex_search_set_mutex_);
         graph_->vertex_search_set_->emplace_back(id);
     }
-    if(vertex->hasAllParts_())
-    {
-        {
-            graph_->total_txns_submitted_++;
-        }
-    }
-
     return 0;
 }
 

@@ -6,34 +6,26 @@
 #include "merger.h"
 #include <list>
 
-//#define LATENCY_TEST_MERGING
-#define PRINT_STATS
-
-//#define DEBUG_MERGING_LOG_L0
-//#define DEBUG_MERGING_LOG_L1
-//#define DEBUG_MERGING_LOG_L2
-
-#define MERGING_LOG_STATS
+//#define PRINT_STATS
 
 #define STAT_INTERVAL 1.0
 
-#define MERGING_LOG_THROUPUT
+//#define THROUPUT
 
-#ifdef MERGING_LOG_THROUPUT
+#ifdef THROUPUT
 double log_time = GetTime();
 uint64_t ready_txns;
 #endif
 
-#ifdef MERGING_LOG_STATS
+#ifdef PRINT_STATS
 double time_ = GetTime();
-double start_time_log = 0;
+double start_time_ = 0;
 #endif
 
 
 
 
 Merger::Merger(ClusterConfig* config, ConnectionMultiplexer* connection, InternalIdTracker * ids, PerfTracker * perf) : perf_(perf) {
-    LOG(ERROR) << "starting Merging sequence";
     configuration_ = config;
     connection_ = connection;
     graph_ = new ConflictGraph(&graph_task_queue_, config->all_nodes_size());
@@ -82,7 +74,6 @@ Merger::Merger(ClusterConfig* config, ConnectionMultiplexer* connection, Interna
 
     int cpu = 5 + NUM_EXECUTORS;
     for(int j = 0; j < configuration_->replicas_size(); j++) {
-        partial_logs_.push_back(new LocalMemLog());
         auto inserter = new PartitionedInserter(this, j);
         inserters.push_back(inserter);
 
@@ -100,10 +91,6 @@ Merger::Merger(ClusterConfig* config, ConnectionMultiplexer* connection, Interna
         pthread_create(&inserter->thread, nullptr, inserter->RunThread, reinterpret_cast<void *>(inserter));
 #endif
     }
-
-
-
-    connection_->NewChannel("merging_log_");
 
 
     for(int i = 0; i < NUM_WORKERS; i++)
@@ -124,10 +111,6 @@ Merger::Merger(ClusterConfig* config, ConnectionMultiplexer* connection, Interna
     }
 
 
-
-#ifdef DEBUG_MERGING_LOG
-    std::cout << "Info: Done init" << std::endl;
-#endif
 }
 
 Merger::~Merger() {
@@ -152,8 +135,6 @@ void Merger::Stop() {
 }
 
 void Merger::RunMerger() {
-    std::cout << "Info: Starting Merger" << std::endl;
-
     while(running_) {
         graph_->findSCCs();
     }
@@ -161,7 +142,6 @@ void Merger::RunMerger() {
 
 
 void Merger::RunWorker() {
-    LOG(ERROR) << "running worker";
     while (running_)
     {
             TaskProto *task;
@@ -184,11 +164,6 @@ void Merger::RunWorker() {
             {
                 uint64_t id = task->id();
 
-                bool reader_conflict = false;
-                if(task->has_read())
-                    reader_conflict = task->read();
-
-                CHECK(!task->has_read() or task->read() == true);
 
                 uint64_t other_id = task->other_id();
                 auto vertex_iter = graph_->incomplete_vertex_.find(id);
@@ -199,7 +174,7 @@ void Merger::RunWorker() {
                 CHECK(*vertex_iter != nullptr);
                 std::shared_ptr<Vertex> vertex(*vertex_iter);
                 CHECK(vertex != nullptr);
-                graph_->tryRun(vertex, other_id, reader_conflict, &current_batch_, &current_batch_mutex_);
+                graph_->tryRun(vertex, other_id, &current_batch_, &current_batch_mutex_);
 
             }
             delete task;
@@ -225,12 +200,12 @@ void *Merger::RunBatchSenderThread(void *arg) {
 
 
 void Merger::sendBatch() {
-#ifdef MERGING_LOG_THROUPUT
+#ifdef THROUPUT
     if (GetTime() > log_time + STAT_INTERVAL) {
         double total_time = GetTime() - log_time;
 
         LOG(ERROR) << "\n*******************************************\nMachine: "<<this_machine_id_<<" SEQUENCER THROUGHPUT -- Sent "<< (static_cast<double>(ready_txns) / total_time)
-                   << " txns/sec, remaining log size " << graph_->size() <<  "\n"
+                   << " txns/sec, remaining size " << graph_->size() <<  "\n"
                    << " \n*******************************************";
 
 
@@ -309,7 +284,6 @@ void Merger::sendBatch() {
             batch_messages_[it]->add_data(txn_string);
         }
         delete txn.second;
-        graph_->total_txns_committed_++;
     }
 
     for (auto message : batch_messages_) {
@@ -317,7 +291,7 @@ void Merger::sendBatch() {
         message.second->clear_data();
     }
 
-#ifdef MERGING_LOG_THROUPUT
+#ifdef THROUPUT
     ready_txns += batch->size();
 #endif
     delete batch;
@@ -334,11 +308,8 @@ void Merger::RunBatchSender() {
 void Merger::PartitionedInserter::Run() {
 #ifdef PRINT_STATS
     double tput = 0;
-    start_time_log = GetTime();
+    start_time_ = GetTime();
 #endif
-
-    LOG(ERROR) << "INFO: starting Inserter for channel " << queue_name_;
-
 
     while (merger_->running_) {
 
@@ -403,11 +374,11 @@ void Merger::PartitionedInserter::ReceiveMessage() {
     }
 }
 
-Merger::PartitionedInserter::PartitionedInserter(Merger *log, uint32_t partition) {
-    this->merger_ = log;
-    this->perf_ = log->perf_;
+Merger::PartitionedInserter::PartitionedInserter(Merger * merger, uint32_t partition) {
+    this->merger_ = merger;
+    this->perf_ = merger->perf_;
     this->partition_ = partition;
-    this->queue_name_ = "merging_log_partition_" + std::to_string(partition);
+    this->queue_name_ = "inserter_partition_" + std::to_string(partition);
     this->merger_->connection_->NewChannel(queue_name_);
     this->inserter = merger_->graph_->getInserter(partition);
 }

@@ -610,7 +610,6 @@ void Tpcc::InitializeStorage(Storage* storage, ClusterConfig* conf) const {
     int_buffer[j] = 'a';//(rand() % 26 + 'a');
   }
   int_buffer[kRecordSize - 1] = '\0';
-    LOG(ERROR) << "init tppc storage with kDBsize = " << kDBSize;
   for (uint64 i = 0; i < kDBSize; i++) {
     if (conf->LookupPartition(IntToString(i)) == conf->relative_node_id()) {
       string value(int_buffer);
@@ -618,6 +617,5 @@ void Tpcc::InitializeStorage(Storage* storage, ClusterConfig* conf) const {
       storage->PutObject(IntToString(i), new Record(value, master));
     }
   }
-    LOG(ERROR) << "done init tppc storage";
 }
 

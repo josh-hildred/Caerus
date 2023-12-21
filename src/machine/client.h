@@ -39,8 +39,6 @@ extern map<uint64, double> scheduler_recv;
 extern map<uint64_t, bool> mr_txn;
 extern vector<double> measured_latency;
 extern std::atomic<uint64> latency_counter;
-//extern vector<double> measured_latency_start_sch;
-//extern vector<double> measured_latency_sch_done;
 extern vector<int> mr_flag;
 #endif
 
@@ -239,7 +237,6 @@ public:
         num_replicas_ = config_->replicas_size();
         locality_size_ = config_->locality_size();
         locality_base = local_replica_ / locality_size_;
-        LOG(ERROR) << "Movr Client: pTravel = [ " <<  percent_mr_/3 << ", " << 2 * (percent_mr_/3) << ", " << 100 - percent_mr_ << " ]";
     }
     virtual ~MovrClient() {}
 
