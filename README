@@ -90,7 +90,7 @@ with the format <machine_id>:<replica>:<address>:<port>.
 ./bin/scripts/cluster --command="make" --path="~/caerus" --username=<username> --config="cluster.conf"
 
 #runs Caerus across the cluster as specified by the workload parameters --experiment, --hot_records, --max_batch_size, --percent_mr, --percent_mp, --locality_size
-./bin/scripts/cluster --command="start" --path="~/caerus" --type=1 --username=<username> --config="cluster.conf" --experiment="TPC-C" --hot_records=240 --max_batch_size=10 --percent_mr=10 --percent_mp=0
+./bin/scripts/cluster --command="start" --path="~/caerus" --type=1 --username=<username> --config="cluster.conf" --experiment="MovR" --hot_records=10000 --max_batch_size=10 --percent_mr=10 --percent_mp=0
 
 #kills all running Caerus instances
 ./bin/scripts/cluster --command="kill" --username=<username> --config="cluster.conf"
